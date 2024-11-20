@@ -13,10 +13,21 @@ class AuthController extends Controller
         $fields = $request->validate([
             'name' => 'required|max:255',
             'email' => 'required|email|unique:users',
-            'password' => 'required|min:3|confirmed'
+            'password' => 'required|min:3|confirmed',
+            'image'=> 'nullable|image|mimes:png,jpg,jpeg|max:2048' 
         ]);
 
-        $user = User::create($fields);
+        $profileImagePath = null;
+        if($request->hasFile('image')){
+            $profileImagePath = $request->file('image')->store('profile_images','public');
+        }
+
+        $user = User::create([
+            'email'=>$fields['email'],
+            'password'=>bcrypt($fields['password']),
+            'name'=>$fields['name'],
+            'profile_image'=>$profileImagePath
+        ]);
         $token = $user->createToken($request->email)->plainTextToken;
         return response()->json([
             'success'=>true,
