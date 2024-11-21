@@ -5,62 +5,75 @@ namespace App\Http\Controllers;
 use App\Models\Cart;
 use App\Http\Requests\StoreCartRequest;
 use App\Http\Requests\UpdateCartRequest;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
+use Illuminate\Support\Facades\Gate;
 
-class CartController extends Controller
+class CartController extends Controller implements HasMiddleware
 {
+   
+    public static function middleware()
+    {
+        return[
+            new Middleware('auth:sanctum')
+        ];
+    }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
+        return['itmes'];
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function showUserCart(Request $request)
     {
-        //
+        $cart_items = Cart::where('user_id',$request->user()->id)
+        ->with('product')->get();
+        return response()->json([
+            "sucess"=>true,
+            "message"=>"showing cart items",
+            "cart_items"=>$cart_items
+        ],200);
     }
+    
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreCartRequest $request)
+    public function store(Request $request)
     {
-        //
+
+        $fields = $request->validate(
+            [
+                'product_id'=>"required|exists:products,id|integer"
+            ]
+        );
+        $cart_item = Cart::create([
+            'user_id' => $request->user()->id, 
+            'product_id' => $fields['product_id'],
+        ]);
+        return response()->json(
+            [
+                "success"=>true,
+                "message"=>"Item added to cart successfully",
+                "cart_item"=>$cart_item
+            ],
+        201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Cart $cart)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Cart $cart)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateCartRequest $request, Cart $cart)
-    {
-        //
-    }
 
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(Cart $cart)
     {
-        //
+        Gate::authorize('modify',$cart);
+        $cart->delete();
+        return response()->json([
+            'success'=>true,
+            'message'=>"item cart deleted successfully"
+        ]);
     }
 }
